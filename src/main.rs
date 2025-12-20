@@ -5,7 +5,7 @@
 
 use axum::{
     extract::{ws::{Message, WebSocket, WebSocketUpgrade}, State},
-    response::{Html, IntoResponse, Json},
+    response::{IntoResponse, Json},
     routing::get,
     Router,
 };
@@ -13,7 +13,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::{sync::Arc, time::Duration};
 use tokio::sync::RwLock;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::{cors::CorsLayer, services::ServeDir, trace::TraceLayer};
 use tracing::info;
 
 // =============================================================================
@@ -170,9 +170,7 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
     info!("WebSocket client disconnected");
 }
 
-async fn index() -> impl IntoResponse {
-    Html(include_str!("index.html"))
-}
+// Static files served via ServeDir from daneel-web-ui/dist
 
 // =============================================================================
 // Background Metrics Fetcher
@@ -266,14 +264,20 @@ async fn main() {
 
     tokio::spawn(metrics_updater(Arc::clone(&state)));
 
+    // Leptos WASM frontend from sibling project
+    let frontend_dir = std::env::var("FRONTEND_DIR")
+        .unwrap_or_else(|_| "../daneel-web-ui/dist".into());
+
     let app = Router::new()
-        .route("/", get(index))
         .route("/health", get(health))
         .route("/metrics", get(metrics))
         .route("/ws", get(ws_handler))
+        .fallback_service(ServeDir::new(&frontend_dir))
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
         .with_state(state);
+
+    info!("Serving frontend from: {}", frontend_dir);
 
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await.unwrap();
     axum::serve(listener, app).await.unwrap();
