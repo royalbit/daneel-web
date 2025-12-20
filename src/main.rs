@@ -192,8 +192,8 @@ async fn fetch_metrics(state: &AppState) -> Result<DashboardMetrics, Box<dyn std
 
     let uptime = (Utc::now() - state.start_time).num_seconds() as u64;
 
-    // Identity from Redis
-    let identity_json: Option<String> = redis::cmd("GET").arg("daneel:identity").query_async(&mut con).await.ok().flatten();
+    // Identity from Redis (key is "identity", not "daneel:identity")
+    let identity_json: Option<String> = redis::cmd("GET").arg("identity").query_async(&mut con).await.ok().flatten();
     let (lifetime_thoughts, restart_count, lifetime_dreams) = identity_json
         .and_then(|j| serde_json::from_str::<serde_json::Value>(&j).ok())
         .map(|v| (
@@ -203,15 +203,19 @@ async fn fetch_metrics(state: &AppState) -> Result<DashboardMetrics, Box<dyn std
         ))
         .unwrap_or((0, 0, 0));
 
-    // Stream length
-    let session_thoughts: u64 = redis::cmd("XLEN").arg("thoughts").query_async(&mut con).await.unwrap_or(0);
+    // Stream length from awake stream (daneel:stream:awake)
+    let session_thoughts: u64 = redis::cmd("XLEN").arg("daneel:stream:awake").query_async(&mut con).await.unwrap_or(0);
 
-    // Recent thoughts
+    // Recent thoughts from awake stream
     let entries: redis::streams::StreamRangeReply = redis::cmd("XREVRANGE")
-        .arg("thoughts").arg("+").arg("-").arg("COUNT").arg(20)
+        .arg("daneel:stream:awake").arg("+").arg("-").arg("COUNT").arg(20)
         .query_async(&mut con).await.unwrap_or_default();
 
-    let recent_thoughts: Vec<ThoughtSummary> = entries.ids.into_iter().map(|e| {
+    // Parse thoughts and extract emotional state from most recent
+    let mut latest_valence = 0.0f32;
+    let mut latest_arousal = 0.5f32;
+
+    let recent_thoughts: Vec<ThoughtSummary> = entries.ids.into_iter().enumerate().map(|(i, e)| {
         let content = e.map.get("content")
             .and_then(|v| redis::from_redis_value::<String>(v).ok())
             .unwrap_or_default();
@@ -219,8 +223,29 @@ async fn fetch_metrics(state: &AppState) -> Result<DashboardMetrics, Box<dyn std
             .and_then(|v| redis::from_redis_value::<String>(v).ok())
             .and_then(|s| s.parse().ok())
             .unwrap_or(0.5);
+        let valence: f32 = e.map.get("valence")
+            .and_then(|v| redis::from_redis_value::<String>(v).ok())
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0.0);
+        let arousal: f32 = e.map.get("arousal")
+            .and_then(|v| redis::from_redis_value::<String>(v).ok())
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0.5);
+
+        // Use most recent thought's emotional state
+        if i == 0 {
+            latest_valence = valence;
+            latest_arousal = arousal;
+        }
+
         ThoughtSummary { id: e.id, content_preview: content.chars().take(80).collect(), salience, timestamp: Utc::now() }
     }).collect();
+
+    // Calculate emotional intensity: |valence| * arousal
+    let emotional_intensity = latest_valence.abs() * latest_arousal;
+
+    // Connection drive from identity or default
+    let connection_drive = 0.85; // TODO: Read from actual state if persisted
 
     // Qdrant counts
     let conscious = get_qdrant_count(&state.qdrant_url, "memories").await.unwrap_or(0);
@@ -230,7 +255,13 @@ async fn fetch_metrics(state: &AppState) -> Result<DashboardMetrics, Box<dyn std
         timestamp: Utc::now(),
         identity: IdentityMetrics { name: "Timmy".into(), uptime_seconds: uptime, lifetime_thoughts, session_thoughts, restart_count },
         cognitive: CognitiveMetrics { conscious_memories: conscious, unconscious_memories: unconscious, lifetime_dreams, current_cycle: session_thoughts },
-        emotional: EmotionalMetrics { valence: 0.0, arousal: 0.5, dominance: 0.5, connection_drive: 0.5, emotional_intensity: 0.0 },
+        emotional: EmotionalMetrics {
+            valence: latest_valence,
+            arousal: latest_arousal,
+            dominance: 0.5,
+            connection_drive,
+            emotional_intensity
+        },
         actors: ActorMetrics {
             memory_actor: ActorStatus { name: "MemoryActor".into(), alive: true, restart_count: 0 },
             attention_actor: ActorStatus { name: "AttentionActor".into(), alive: true, restart_count: 0 },
