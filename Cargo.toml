@@ -1,0 +1,49 @@
+[package]
+name = "daneel-web"
+version = "0.1.0"
+edition = "2021"
+description = "Web dashboard for observing Timmy's cognitive processes"
+authors = ["Louis C. Tavares <rex@royalbit.ca>"]
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/royalbit/daneel-web"
+
+[dependencies]
+# Web framework
+axum = { version = "0.7", features = ["ws", "macros"] }
+axum-extra = { version = "0.9", features = ["typed-header"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "fs", "trace"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Redis client (read-only access)
+redis = { version = "0.25", features = ["tokio-comp", "streams"] }
+
+# Qdrant client (read-only access)
+qdrant-client = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Async utilities
+futures = "0.3"
+tokio-stream = "0.1"
+
+# Config
+dotenvy = "0.15"
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[[bin]]
+name = "daneel-web"
+path = "src/main.rs"

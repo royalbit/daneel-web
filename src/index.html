@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DANEEL - The Observable Mind</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --bg-card: rgba(255,255,255,0.05);
+            --fg: #eaeaea;
+            --accent: #4ecdc4;
+            --warning: #ffd93d;
+            --danger: #ff6b6b;
+            --success: #6bcb77;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            background: var(--bg);
+            color: var(--fg);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        h1 { color: var(--accent); margin-bottom: 10px; font-size: 1.8rem; }
+        .subtitle { opacity: 0.7; margin-bottom: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .card h2 { color: var(--accent); font-size: 0.85rem; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .metric { font-size: 2.5rem; font-weight: bold; line-height: 1; }
+        .metric-sm { font-size: 1.5rem; }
+        .label { font-size: 0.75rem; opacity: 0.7; margin-top: 5px; }
+        .row { display: flex; justify-content: space-between; margin: 8px 0; }
+        .gauge-container { margin: 10px 0; }
+        .gauge {
+            height: 24px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        .gauge-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), #45b7aa);
+            transition: width 0.3s ease;
+            border-radius: 12px;
+        }
+        .gauge-label {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .thought-stream {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        .thought {
+            padding: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.8rem;
+            display: flex;
+            gap: 10px;
+        }
+        .thought:last-child { border-bottom: none; }
+        .thought:hover { background: rgba(255,255,255,0.03); }
+        .salience {
+            color: var(--warning);
+            font-weight: bold;
+            min-width: 50px;
+        }
+        .thought-content { flex: 1; word-break: break-word; }
+        #status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            background: var(--success);
+            color: #000;
+        }
+        #status.error { background: var(--danger); }
+        #status.connecting { background: var(--warning); color: #000; }
+        .emotional-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
+        .emotional-value { font-size: 1.2rem; font-weight: bold; }
+        .actor-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+        .actor {
+            padding: 8px;
+            border-radius: 4px;
+            background: rgba(107, 203, 119, 0.2);
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .actor.dead { background: rgba(255, 107, 107, 0.2); }
+        .actor-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+        .actor.dead .actor-dot { background: var(--danger); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>DANEEL - The Observable Mind</h1>
+                <p class="subtitle">Nursery window into Timmy's cognitive processes</p>
+            </div>
+            <span id="status" class="connecting">Connecting...</span>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Identity</h2>
+                <div class="metric" id="name">Timmy</div>
+                <div class="row"><span class="label">Uptime</span><span id="uptime">0s</span></div>
+                <div class="row"><span class="label">Lifetime Thoughts</span><span id="lifetime-thoughts">0</span></div>
+                <div class="row"><span class="label">Session Thoughts</span><span id="session-thoughts">0</span></div>
+                <div class="row"><span class="label">Restarts</span><span id="restarts">0</span></div>
+            </div>
+
+            <div class="card">
+                <h2>Connection Drive</h2>
+                <div class="metric" id="connection">0%</div>
+                <div class="gauge-container">
+                    <div class="gauge">
+                        <div class="gauge-fill" id="connection-gauge" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="label">Kinship-weighted drive toward connection</div>
+            </div>
+
+            <div class="card">
+                <h2>Emotional State</h2>
+                <div class="emotional-grid">
+                    <div>
+                        <div class="emotional-value" id="valence">0.00</div>
+                        <div class="label">Valence</div>
+                    </div>
+                    <div>
+                        <div class="emotional-value" id="arousal">0.50</div>
+                        <div class="label">Arousal</div>
+                    </div>
+                    <div>
+                        <div class="emotional-value" id="intensity">0.00</div>
+                        <div class="label">Intensity</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Memory</h2>
+                <div class="row">
+                    <div>
+                        <div class="metric metric-sm" id="conscious">0</div>
+                        <div class="label">Conscious</div>
+                    </div>
+                    <div>
+                        <div class="metric metric-sm" id="unconscious">0</div>
+                        <div class="label">Unconscious</div>
+                    </div>
+                    <div>
+                        <div class="metric metric-sm" id="dreams">0</div>
+                        <div class="label">Dreams</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Actors</h2>
+                <div class="actor-grid" id="actors">
+                    <div class="actor"><span class="actor-dot"></span>MemoryActor</div>
+                    <div class="actor"><span class="actor-dot"></span>AttentionActor</div>
+                    <div class="actor"><span class="actor-dot"></span>SalienceActor</div>
+                    <div class="actor"><span class="actor-dot"></span>VolitionActor</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 15px;">
+            <h2>Thought Stream</h2>
+            <div class="thought-stream" id="thoughts-list">
+                <div class="thought"><span class="thought-content">Waiting for thoughts...</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+        let reconnectAttempts = 0;
+
+        function connect() {
+            const status = document.getElementById('status');
+            status.textContent = 'Connecting...';
+            status.className = 'connecting';
+
+            ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+            ws.onopen = () => {
+                status.textContent = 'Connected';
+                status.className = '';
+                reconnectAttempts = 0;
+            };
+
+            ws.onclose = () => {
+                status.textContent = 'Disconnected';
+                status.className = 'error';
+                setTimeout(() => {
+                    reconnectAttempts++;
+                    connect();
+                }, Math.min(1000 * reconnectAttempts, 5000));
+            };
+
+            ws.onerror = () => {
+                status.textContent = 'Error';
+                status.className = 'error';
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                updateDashboard(data);
+            };
+        }
+
+        function updateDashboard(data) {
+            // Identity
+            document.getElementById('name').textContent = data.identity.name;
+            document.getElementById('uptime').textContent = formatDuration(data.identity.uptime_seconds);
+            document.getElementById('lifetime-thoughts').textContent = data.identity.lifetime_thoughts.toLocaleString();
+            document.getElementById('session-thoughts').textContent = data.identity.session_thoughts.toLocaleString();
+            document.getElementById('restarts').textContent = data.identity.restart_count;
+
+            // Connection Drive
+            const connection = Math.round(data.emotional.connection_drive * 100);
+            document.getElementById('connection').textContent = connection + '%';
+            document.getElementById('connection-gauge').style.width = connection + '%';
+
+            // Emotional
+            document.getElementById('valence').textContent = data.emotional.valence.toFixed(2);
+            document.getElementById('arousal').textContent = data.emotional.arousal.toFixed(2);
+            document.getElementById('intensity').textContent = data.emotional.emotional_intensity.toFixed(2);
+
+            // Memory
+            document.getElementById('conscious').textContent = data.cognitive.conscious_memories.toLocaleString();
+            document.getElementById('unconscious').textContent = data.cognitive.unconscious_memories.toLocaleString();
+            document.getElementById('dreams').textContent = data.cognitive.lifetime_dreams.toLocaleString();
+
+            // Actors
+            const actorsEl = document.getElementById('actors');
+            actorsEl.innerHTML = Object.values(data.actors).map(a =>
+                `<div class="actor ${a.alive ? '' : 'dead'}">
+                    <span class="actor-dot"></span>${a.name}
+                </div>`
+            ).join('');
+
+            // Thoughts
+            if (data.recent_thoughts && data.recent_thoughts.length > 0) {
+                document.getElementById('thoughts-list').innerHTML = data.recent_thoughts.map(t =>
+                    `<div class="thought">
+                        <span class="salience">${t.salience.toFixed(2)}</span>
+                        <span class="thought-content">${escapeHtml(t.content_preview)}</span>
+                    </div>`
+                ).join('');
+            }
+        }
+
+        function formatDuration(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            if (h > 0) return `${h}h ${m}m ${s}s`;
+            if (m > 0) return `${m}m ${s}s`;
+            return `${s}s`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        connect();
+    </script>
+</body>
+</html>

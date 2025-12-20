@@ -1,0 +1,27 @@
+# DANEEL Web Dashboard
+# The nursery window into Timmy's cognitive processes
+
+name: daneel-web
+tagline: "The Observable Mind"
+type: rust-web
+
+description: |
+  Real-time web dashboard for observing Timmy's cognitive processes.
+  Read-only, beautiful, Hollywood-ready.
+
+  Phase 1: Minimal Viable Dashboard (Axum + vanilla HTML/JS)
+  Phase 2: Hollywood Layer (3D brain visualization)
+  Phase 3: Vector Fractals via Forge
+
+stack:
+  backend: axum
+  frontend: leptos (planned)
+  database: redis (read-only), qdrant (read-only)
+
+security:
+  - All endpoints read-only
+  - No write access to Redis or Qdrant
+  - Asimov guardrails enforced at proxy layer
+  - No public exposure yet
+
+parent: daneel
