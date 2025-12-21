@@ -42,6 +42,7 @@ tokio-stream = "0.1"
 dotenvy = "0.15"
 
 [dev-dependencies]
+cargo-husky = { version = "1", default-features = false, features = ["user-hooks"] }
 tokio-test = "0.4"
 
 [[bin]]

@@ -3,3 +3,4 @@ frontend/dist/
 .daneel-web.pid
 frontend/target/
 frontend/Cargo.lock
+.claude_checkpoint.yaml
