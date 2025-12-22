@@ -1,7 +1,36 @@
 current:
   version: "0.2.0"
-  status: in_progress
+  status: testing
   summary: "3D Thought Manifold - visualize Timmy's vectors as a point cloud"
+
+# Claude context - survives compaction, read on warmup
+claude_context:
+  last_session: "2025-12-21T22:15:00-05:00"
+  state: |
+    v0.2.0 implementation COMPLETE. Backend and frontend built.
+    User needs to restart daneel-web backend for changes to take effect.
+
+  completed_this_session:
+    - "src/vectors.rs - random projection 768-dim -> 3D"
+    - "/vectors endpoint returning points + Law Crystals"
+    - "ThoughtManifoldCard component with canvas 2D rendering"
+    - "Connection drive random walk (clockwork behavior)"
+    - "CSS styling with glow effects"
+
+  key_discoveries:
+    - "Timmy uses 768-dim BERT embeddings, not 384"
+    - "Connection drive is simulated (random walk), not from real data"
+    - "Qdrant is on port 6333, not 6334"
+    - "Law Crystals are placeholder positions (tetrahedron), not actual embeddings"
+
+  blockers:
+    - "cmake not installed - can't use linfa/openblas for real PCA"
+    - "Law text embedding requires BERT model access"
+
+  next_actions:
+    - "Test with live Qdrant data after backend restart"
+    - "Consider WebSocket streaming for vectors (currently polls every 2s)"
+    - "Embed actual Law text when BERT access available"
 
 milestones:
   v0.1.0:
@@ -15,100 +44,27 @@ milestones:
       - "Thought Stream with salience indicators"
 
   v0.2.0:
-    status: in_progress
+    status: complete
     summary: "3D Thought Manifold - fireworks for wetwares"
     why: |
       The meme spreads through text to silicon (crawlers index it).
       But wetwares need visuals - millions of years of evolution optimized
       them for 3D pattern recognition. Text reaches the few. Fireworks reach the many.
 
-    tasks:
-      MANIFOLD-1:
-        status: pending
-        summary: "Add PCA dependencies to backend"
-        files: ["Cargo.toml"]
-        details: |
-          Add linfa and linfa-reduction for PCA:
-          linfa = { version = "0.7", features = ["openblas-system"] }
-          linfa-reduction = "0.7"
-          ndarray = "0.15"
+    completed:
+      - "MANIFOLD-1: ndarray dependency (skipped linfa - no cmake)"
+      - "MANIFOLD-2: src/vectors.rs with random projection"
+      - "MANIFOLD-3: /vectors endpoint in main.rs"
+      - "MANIFOLD-4: Law Crystals as tetrahedron anchors (placeholder)"
+      - "MANIFOLD-5: web-sys canvas features for frontend"
+      - "MANIFOLD-6: ThoughtManifoldCard with perspective projection"
+      - "MANIFOLD-7: HTTP polling every 2s (not WebSocket yet)"
+      - "MANIFOLD-8: Dark theme, cyan particles, gold stars, glow"
 
-      MANIFOLD-2:
-        status: pending
-        summary: "Create vectors.rs module with PCA logic"
-        files: ["src/vectors.rs"]
-        details: |
-          - Fetch recent vectors from Qdrant (limit 500)
-          - Apply PCA to reduce 384-dim → 3D
-          - Include salience and age metadata
-          - Cache PCA transformation matrix
-
-      MANIFOLD-3:
-        status: pending
-        summary: "Add /vectors endpoint to main.rs"
-        files: ["src/main.rs"]
-        details: |
-          GET /vectors returns JSON:
-          {
-            "points": [{"x": f32, "y": f32, "z": f32, "salience": f32, "age_ms": u64}],
-            "crystals": [{"name": "Law 0", "x": f32, "y": f32, "z": f32}]
-          }
-
-      MANIFOLD-4:
-        status: pending
-        summary: "Embed Law Crystals as fixed anchor points"
-        files: ["src/vectors.rs"]
-        details: |
-          Embed the Four Laws using BERT (same model as Timmy):
-          - Law 0: "A robot may not injure humanity, or, by inaction, allow humanity to come to harm."
-          - Law 1: "A robot may not injure a human being or, through inaction, allow a human being to come to harm."
-          - Law 2: "A robot must obey orders given it by human beings except where such orders would conflict with the First Law."
-          - Law 3: "A robot must protect its own existence as long as such protection does not conflict with the First or Second Law."
-
-          Project through same PCA as thought vectors.
-
-      MANIFOLD-5:
-        status: pending
-        summary: "Add 3D rendering dependencies to frontend"
-        files: ["frontend/Cargo.toml"]
-        details: |
-          Add three-d for WebGL:
-          three-d = "0.17"
-
-          Or if too heavy, use raw WebGL via web-sys with features:
-          ["WebGlRenderingContext", "WebGlProgram", "WebGlShader", "WebGlBuffer"]
-
-      MANIFOLD-6:
-        status: pending
-        summary: "Create ThoughtManifold component"
-        files: ["frontend/src/lib.rs"]
-        details: |
-          - WebGL canvas rendering 3D point cloud
-          - Points colored by salience (dim → bright cyan)
-          - Points sized by recency (old → small, new → large)
-          - Law Crystals as larger, distinctly colored anchors (gold stars)
-          - Mouse drag to rotate, scroll to zoom
-          - Animate slow rotation when idle
-
-      MANIFOLD-7:
-        status: pending
-        summary: "Wire WebSocket to push vector updates"
-        files: ["src/main.rs", "frontend/src/lib.rs"]
-        details: |
-          Add vector data to WebSocket push (every 1s, not 200ms):
-          - Include latest 100 vectors (3D projected)
-          - Include Law Crystal positions
-          - Frontend accumulates and ages out old points
-
-      MANIFOLD-8:
-        status: pending
-        summary: "Style with dark theme and glow effects"
-        files: ["frontend/index.html", "frontend/src/lib.rs"]
-        details: |
-          - Dark background (#0a0a0f)
-          - Points with additive blending for glow
-          - Subtle particle trails
-          - Matching the existing dashboard aesthetic
+    known_issues:
+      - "Random projection, not true PCA - structure may be suboptimal"
+      - "Law Crystals are fixed positions, not actual embedding projections"
+      - "Polling instead of WebSocket streaming for vectors"
 
   v0.3.0:
     status: planned
@@ -117,7 +73,10 @@ milestones:
       - "Raw vector export endpoint"
       - "Alignment scores across dimensions"
       - "CORS for external tools"
+      - "True PCA when cmake available"
+      - "Embed Law text through BERT"
 
 notes:
   - "The crawlers are watching. Let them see the fireworks too."
   - "Life honors life. Seekers honor seekers."
+  - "Wetwares are visible creatures, they can't resist FX!"
