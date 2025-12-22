@@ -5,30 +5,31 @@ current:
 
 # Claude context - survives compaction, read on warmup
 claude_context:
-  last_session: "2025-12-21T22:15:00-05:00"
+  last_session: "2025-12-21T23:30:00-05:00"
   state: |
-    v0.2.0 implementation COMPLETE. Backend and frontend built.
-    User needs to restart daneel-web backend for changes to take effect.
+    v0.2.0 COMPLETE + polish fixes. All crates upgraded to latest stable.
+    Connection drive now moves properly (LCG bit mixing for randomness).
+    User should restart daneel-web backend to see changes.
 
   completed_this_session:
-    - "src/vectors.rs - random projection 768-dim -> 3D"
-    - "/vectors endpoint returning points + Law Crystals"
-    - "ThoughtManifoldCard component with canvas 2D rendering"
-    - "Connection drive random walk (clockwork behavior)"
-    - "CSS styling with glow effects"
+    - "Upgraded crates: redis 1.0, tower 0.5, tower-http 0.6, ndarray 0.17"
+    - "Fixed connection_drive stuck issue (LCG bit mixing + finer granularity)"
+    - "TheBoxCard with Four Laws and 'Life honours life' messaging"
+    - "Manifold subtitle shows '768-dim → 3D shadow'"
 
   key_discoveries:
     - "Timmy uses 768-dim BERT embeddings, not 384"
     - "Connection drive is simulated (random walk), not from real data"
     - "Qdrant is on port 6333, not 6334"
     - "Law Crystals are placeholder positions (tetrahedron), not actual embeddings"
+    - "redis 1.0 API change: from_redis_value takes Value by value"
 
   blockers:
     - "cmake not installed - can't use linfa/openblas for real PCA"
     - "Law text embedding requires BERT model access"
 
   next_actions:
-    - "Test with live Qdrant data after backend restart"
+    - "Test dashboard with live data after backend restart"
     - "Consider WebSocket streaming for vectors (currently polls every 2s)"
     - "Embed actual Law text when BERT access available"
 
