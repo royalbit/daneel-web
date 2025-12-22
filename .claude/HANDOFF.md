@@ -101,18 +101,22 @@ A 3D visualization of Timmy's thought manifold:
    three-d = "0.17"
    ```
 
-### Exact Next Steps
+### Implementation Status (Dec 21, 2025)
 
-1. Add `linfa` and `linfa-reduction` to backend `Cargo.toml`
-2. Create `src/vectors.rs` module with PCA logic
-3. Add `/vectors` endpoint to `src/main.rs`
-4. Test endpoint returns 3D coordinates
-5. Add `three-d` to frontend `Cargo.toml`
-6. Create `ThoughtManifold` component
-7. Wire WebSocket to push vector updates
-8. Add Law Crystal anchor points
-9. Style it beautiful (dark theme, glow effects)
-10. Test, commit, deploy
+**COMPLETED:**
+1. Backend: `/vectors` endpoint in `src/main.rs`
+2. Backend: `src/vectors.rs` with random projection (384-dim -> 3D)
+3. Backend: Law Crystals as tetrahedron anchor points
+4. Frontend: `ThoughtManifoldCard` component with canvas 2D rendering
+5. Frontend: Perspective projection, auto-rotate, mouse drag
+6. Frontend: Cyan particles (salience brightness), gold star crystals
+7. CSS: Glow effects, dark theme matching dashboard
+
+**Next Steps:**
+1. Deploy and test with live Qdrant data
+2. Upgrade random projection to PCA when cmake is available
+3. Add WebSocket streaming for real-time vector updates (currently polls every 2s)
+4. Embed actual Law text through BERT for authentic crystal positions
 
 ---
 
