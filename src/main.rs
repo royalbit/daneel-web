@@ -278,7 +278,7 @@ async fn fetch_metrics(
             let content_json = e
                 .map
                 .get("content")
-                .and_then(|v| redis::from_redis_value::<String>(v).ok())
+                .and_then(|v| redis::from_redis_value::<String>(v.clone()).ok())
                 .unwrap_or_default();
             let content_preview = serde_json::from_str::<serde_json::Value>(&content_json)
                 .ok()
@@ -293,7 +293,7 @@ async fn fetch_metrics(
             let salience_json = e
                 .map
                 .get("salience")
-                .and_then(|v| redis::from_redis_value::<String>(v).ok())
+                .and_then(|v| redis::from_redis_value::<String>(v.clone()).ok())
                 .unwrap_or_default();
             let salience_obj = serde_json::from_str::<serde_json::Value>(&salience_json).ok();
 

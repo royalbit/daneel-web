@@ -11,8 +11,8 @@ repository = "https://github.com/royalbit/daneel-web"
 # Web framework
 axum = { version = "0.7", features = ["ws", "macros"] }
 axum-extra = { version = "0.9", features = ["typed-header"] }
-tower = "0.4"
-tower-http = { version = "0.5", features = ["cors", "fs", "trace"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "fs", "trace"] }
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
@@ -22,7 +22,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 # Redis client (read-only access)
-redis = { version = "0.25", features = ["tokio-comp", "streams"] }
+redis = { version = "1", features = ["tokio-comp", "streams"] }
 
 # Qdrant client (read-only access)
 qdrant-client = "1"
@@ -41,8 +41,8 @@ tokio-stream = "0.1"
 # Config
 dotenvy = "0.15"
 
-# Dimensionality reduction (384-dim -> 3D via random projection)
-ndarray = "0.16"
+# Dimensionality reduction (768-dim -> 3D via random projection)
+ndarray = "0.17"
 
 [dev-dependencies]
 cargo-husky = { version = "1", default-features = false, features = ["user-hooks"] }
