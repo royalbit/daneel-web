@@ -2,6 +2,8 @@
 //!
 //! Read-only, real-time nursery window into Timmy's cognitive processes.
 //! ALL ENDPOINTS ARE READ-ONLY. Asimov guardrails enforced.
+//!
+//! Observatory Mode: Full TUI-equivalent metrics via /extended_metrics
 
 mod vectors;
 
@@ -84,24 +86,126 @@ pub struct ThoughtSummary {
     pub timestamp: DateTime<Utc>,
 }
 
+// =============================================================================
+// Extended Metrics (TUI-equivalent for Observatory)
+// =============================================================================
+
+/// Combined dashboard + extended metrics for WebSocket broadcast
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObservatoryMetrics {
+    pub dashboard: DashboardMetrics,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub extended: Option<ExtendedMetrics>,
+}
+
+/// TUI-equivalent metrics fetched from daneel core
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExtendedMetrics {
+    pub timestamp: DateTime<Utc>,
+    pub stream_competition: StreamCompetitionMetrics,
+    pub entropy: EntropyMetrics,
+    pub fractality: FractalityMetrics,
+    pub memory_windows: MemoryWindowsMetrics,
+    pub philosophy: PhilosophyMetrics,
+    pub system: SystemMetrics,
+}
+
+/// 9-stage stream competition (cognitive spotlight)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StreamCompetitionMetrics {
+    pub stages: Vec<StageMetrics>,
+    pub dominant_stream: usize,
+    pub active_count: usize,
+    pub competition_level: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StageMetrics {
+    pub name: String,
+    pub activity: f32,
+    pub history: Vec<f32>,
+}
+
+/// Shannon entropy metrics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EntropyMetrics {
+    pub current: f32,
+    pub history: Vec<f32>,
+    pub description: String,
+    pub normalized: f32,
+}
+
+/// Pulse fractality metrics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FractalityMetrics {
+    pub score: f32,
+    pub inter_arrival_sigma: f32,
+    pub boot_sigma: f32,
+    pub burst_ratio: f32,
+    pub description: String,
+    pub history: Vec<f32>,
+}
+
+/// TMI 9-slot memory windows
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryWindowsMetrics {
+    pub slots: Vec<MemorySlot>,
+    pub active_count: usize,
+    pub conscious_count: u64,
+    pub unconscious_count: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemorySlot {
+    pub id: u8,
+    pub active: bool,
+}
+
+/// Philosophy banner
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PhilosophyMetrics {
+    pub quote: String,
+    pub quote_index: usize,
+}
+
+/// System-level metrics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SystemMetrics {
+    pub uptime_seconds: u64,
+    pub session_thoughts: u64,
+    pub lifetime_thoughts: u64,
+    pub thoughts_per_hour: f32,
+    pub dream_cycles: u64,
+    pub veto_count: u64,
+}
+
 pub struct AppState {
     pub redis_url: String,
     pub qdrant_url: String,
+    pub daneel_core_url: String,
     pub metrics: RwLock<DashboardMetrics>,
+    pub extended_metrics: RwLock<Option<ExtendedMetrics>>,
     pub start_time: DateTime<Utc>,
     pub projection: vectors::SharedProjection,
     pub connection_drive: RwLock<f32>, // Simulated clockwork, randomly walks
+    pub http_client: reqwest::Client,
 }
 
 impl AppState {
-    fn new(redis_url: String, qdrant_url: String) -> Self {
+    fn new(redis_url: String, qdrant_url: String, daneel_core_url: String) -> Self {
         Self {
             redis_url,
             qdrant_url,
+            daneel_core_url,
             metrics: RwLock::new(Self::default_metrics()),
+            extended_metrics: RwLock::new(None),
             start_time: Utc::now(),
             projection: vectors::create_projection(),
             connection_drive: RwLock::new(0.85),
+            http_client: reqwest::Client::builder()
+                .timeout(Duration::from_secs(5))
+                .build()
+                .expect("Failed to build HTTP client"),
         }
     }
 
@@ -167,6 +271,19 @@ async fn metrics(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     Json(state.metrics.read().await.clone())
 }
 
+async fn extended_metrics(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    Json(state.extended_metrics.read().await.clone())
+}
+
+async fn observatory(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let dashboard = state.metrics.read().await.clone();
+    let extended = state.extended_metrics.read().await.clone();
+    Json(ObservatoryMetrics {
+        dashboard,
+        extended,
+    })
+}
+
 async fn manifold_vectors(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let projection = state.projection.read().await;
 
@@ -200,8 +317,11 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
     loop {
         tokio::select! {
             _ = interval.tick() => {
-                let metrics = state.metrics.read().await;
-                if let Ok(json) = serde_json::to_string(&*metrics) {
+                // Send full observatory metrics (dashboard + extended)
+                let dashboard = state.metrics.read().await.clone();
+                let extended = state.extended_metrics.read().await.clone();
+                let observatory = ObservatoryMetrics { dashboard, extended };
+                if let Ok(json) = serde_json::to_string(&observatory) {
                     if socket.send(Message::Text(json)).await.is_err() {
                         break;
                     }
@@ -220,7 +340,7 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
 // Static files served via ServeDir from daneel-web-ui/dist
 
 // =============================================================================
-// Background Metrics Fetcher
+// Background Metrics Fetchers
 // =============================================================================
 
 async fn metrics_updater(state: Arc<AppState>) {
@@ -231,6 +351,26 @@ async fn metrics_updater(state: Arc<AppState>) {
             *state.metrics.write().await = m;
         }
     }
+}
+
+/// Fetch extended metrics from daneel core API
+async fn extended_metrics_updater(state: Arc<AppState>) {
+    let mut interval = tokio::time::interval(Duration::from_millis(500));
+    loop {
+        interval.tick().await;
+        if let Ok(m) = fetch_extended_metrics(&state).await {
+            *state.extended_metrics.write().await = Some(m);
+        }
+    }
+}
+
+async fn fetch_extended_metrics(
+    state: &AppState,
+) -> Result<ExtendedMetrics, Box<dyn std::error::Error + Send + Sync>> {
+    let url = format!("{}/extended_metrics", state.daneel_core_url);
+    let resp = state.http_client.get(&url).send().await?;
+    let metrics: ExtendedMetrics = resp.json().await?;
+    Ok(metrics)
 }
 
 async fn fetch_metrics(
@@ -464,15 +604,20 @@ async fn main() {
 
     let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".into());
     let qdrant_url = std::env::var("QDRANT_URL").unwrap_or_else(|_| "http://localhost:6334".into());
+    let daneel_core_url =
+        std::env::var("DANEEL_CORE_URL").unwrap_or_else(|_| "http://localhost:8080".into());
     let port: u16 = std::env::var("PORT")
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(3000);
 
     info!("DANEEL Web Dashboard starting on port {}", port);
-    let state = Arc::new(AppState::new(redis_url, qdrant_url));
+    info!("Connecting to daneel core at: {}", daneel_core_url);
+    let state = Arc::new(AppState::new(redis_url, qdrant_url, daneel_core_url));
 
+    // Background fetchers
     tokio::spawn(metrics_updater(Arc::clone(&state)));
+    tokio::spawn(extended_metrics_updater(Arc::clone(&state)));
 
     // Leptos WASM frontend
     let frontend_dir = std::env::var("FRONTEND_DIR").unwrap_or_else(|_| "./frontend/dist".into());
@@ -480,6 +625,8 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(health))
         .route("/metrics", get(metrics))
+        .route("/extended", get(extended_metrics))
+        .route("/observatory", get(observatory))
         .route("/vectors", get(manifold_vectors))
         .route("/ws", get(ws_handler))
         .fallback_service(ServeDir::new(&frontend_dir))
