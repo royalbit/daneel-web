@@ -341,3 +341,240 @@ h1 {
     padding-top: 8px;
     margin-top: 8px;
 }
+
+/* =============================================================================
+   OBSERVATORY COMPONENTS
+   ============================================================================= */
+
+.observatory-section {
+    margin: 25px 0;
+}
+
+.section-title {
+    color: var(--accent);
+    font-size: 1rem;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border-bottom: 1px solid rgba(78, 205, 196, 0.3);
+    padding-bottom: 8px;
+}
+
+.observatory-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 15px;
+}
+
+.metrics-column {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+@media (max-width: 900px) {
+    .observatory-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Philosophy Card */
+.philosophy-card {
+    background: linear-gradient(135deg, rgba(78, 205, 196, 0.1), rgba(69, 183, 170, 0.05));
+    border: 1px solid rgba(78, 205, 196, 0.3);
+    margin-bottom: 15px;
+    text-align: center;
+    padding: 20px;
+}
+
+.philosophy-quote {
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--accent);
+    line-height: 1.5;
+}
+
+/* Stream Competition Card */
+.stream-card {
+    min-height: 300px;
+}
+
+.stream-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    font-size: 0.85rem;
+}
+
+.competition-level {
+    color: var(--warning);
+    font-weight: bold;
+}
+
+.active-count {
+    opacity: 0.7;
+}
+
+.streams {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.stream-row {
+    display: grid;
+    grid-template-columns: 100px 1fr 50px;
+    gap: 10px;
+    align-items: center;
+    font-size: 0.8rem;
+}
+
+.stream-name {
+    color: var(--fg);
+    opacity: 0.8;
+    font-weight: 500;
+}
+
+.stream-bar-container {
+    height: 16px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.stream-bar {
+    height: 100%;
+    background: linear-gradient(90deg, rgba(78, 205, 196, 0.6), rgba(78, 205, 196, 0.8));
+    border-radius: 8px;
+    transition: width 0.3s ease;
+}
+
+.stream-bar.dominant {
+    background: linear-gradient(90deg, var(--warning), #e6c332);
+    box-shadow: 0 0 10px rgba(255, 217, 61, 0.4);
+}
+
+.stream-value {
+    text-align: right;
+    font-weight: bold;
+    font-size: 0.75rem;
+}
+
+/* Entropy Card */
+.entropy-card h2 {
+    color: #9b59b6;
+}
+
+.entropy-value {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #9b59b6;
+}
+
+.entropy-gauge {
+    height: 20px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.entropy-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3498db, #9b59b6, #e74c3c);
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+.entropy-description {
+    font-size: 0.85rem;
+    font-weight: bold;
+    text-align: center;
+    margin: 8px 0;
+}
+
+.entropy-scale {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    opacity: 0.6;
+}
+
+/* Fractality Card */
+.fractality-card h2 {
+    color: #e67e22;
+}
+
+.fractality-score {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #e67e22;
+}
+
+.fractality-gauge {
+    height: 20px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.fractality-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3498db, #2ecc71, #e67e22);
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+.fractality-description {
+    font-size: 0.85rem;
+    font-weight: bold;
+    text-align: center;
+    margin: 8px 0;
+}
+
+.fractality-stats {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    text-align: center;
+}
+
+/* Memory Windows Card */
+.memory-windows-card h2 {
+    color: #1abc9c;
+}
+
+.windows-header {
+    text-align: center;
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+    opacity: 0.8;
+}
+
+.memory-slots {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 6px;
+}
+
+.slot {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    opacity: 0.4;
+    transition: all 0.3s ease;
+}
+
+.slot.active {
+    background: rgba(26, 188, 156, 0.4);
+    border: 1px solid rgba(26, 188, 156, 0.6);
+    opacity: 1;
+    box-shadow: 0 0 8px rgba(26, 188, 156, 0.3);
+}

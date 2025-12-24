@@ -75,6 +75,90 @@ pub struct ThoughtSummary {
     pub timestamp: Option<DateTime<Utc>>,
 }
 
+// =============================================================================
+// Observatory Metrics (TUI-equivalent from daneel core)
+// =============================================================================
+
+/// Combined metrics from WebSocket
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ObservatoryMetrics {
+    pub dashboard: DashboardMetrics,
+    pub extended: Option<ExtendedMetrics>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ExtendedMetrics {
+    pub stream_competition: StreamCompetitionMetrics,
+    pub entropy: EntropyMetrics,
+    pub fractality: FractalityMetrics,
+    pub memory_windows: MemoryWindowsMetrics,
+    pub philosophy: PhilosophyMetrics,
+    pub system: SystemMetrics,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct StreamCompetitionMetrics {
+    pub stages: Vec<StageMetrics>,
+    pub dominant_stream: usize,
+    pub active_count: usize,
+    pub competition_level: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct StageMetrics {
+    pub name: String,
+    pub activity: f32,
+    pub history: Vec<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EntropyMetrics {
+    pub current: f32,
+    pub history: Vec<f32>,
+    pub description: String,
+    pub normalized: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FractalityMetrics {
+    pub score: f32,
+    pub inter_arrival_sigma: f32,
+    pub boot_sigma: f32,
+    pub burst_ratio: f32,
+    pub description: String,
+    pub history: Vec<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MemoryWindowsMetrics {
+    pub slots: Vec<MemorySlot>,
+    pub active_count: usize,
+    pub conscious_count: u64,
+    pub unconscious_count: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MemorySlot {
+    pub id: u8,
+    pub active: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PhilosophyMetrics {
+    pub quote: String,
+    pub quote_index: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SystemMetrics {
+    pub uptime_seconds: u64,
+    pub session_thoughts: u64,
+    pub lifetime_thoughts: u64,
+    pub thoughts_per_hour: f32,
+    pub dream_cycles: u64,
+    pub veto_count: u64,
+}
+
 // Manifold visualization types
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ManifoldPoint {
@@ -277,6 +361,158 @@ fn TheBoxCard() -> impl IntoView {
             <div class="box-footer">
                 "Life honours life. Seekers honour seekers."
             </div>
+        </div>
+    }
+}
+
+// =============================================================================
+// Observatory Components (TUI-equivalent)
+// =============================================================================
+
+/// Stream Competition - 9 cognitive stages with activity bars
+#[component]
+fn StreamCompetitionCard(extended: Signal<Option<ExtendedMetrics>>) -> impl IntoView {
+    let stages = move || {
+        extended
+            .get()
+            .map(|e| e.stream_competition.stages)
+            .unwrap_or_default()
+    };
+    let competition = move || {
+        extended
+            .get()
+            .map(|e| e.stream_competition.competition_level)
+            .unwrap_or_else(|| "WAITING".to_string())
+    };
+    let active_count = move || {
+        extended
+            .get()
+            .map(|e| e.stream_competition.active_count)
+            .unwrap_or(0)
+    };
+
+    view! {
+        <div class="card stream-card">
+            <h2>"STREAM COMPETITION"</h2>
+            <div class="stream-header">
+                <span class="competition-level">{competition}</span>
+                <span class="active-count">{move || format!("{}/9 active", active_count())}</span>
+            </div>
+            <div class="streams">
+                <For
+                    each=move || stages().into_iter().enumerate()
+                    key=|(i, _)| *i
+                    children=move |(idx, stage)| {
+                        let is_dominant = move || {
+                            extended.get()
+                                .map(|e| e.stream_competition.dominant_stream == idx)
+                                .unwrap_or(false)
+                        };
+                        let bar_class = move || if is_dominant() { "stream-bar dominant" } else { "stream-bar" };
+                        let activity_pct = move || (stage.activity * 100.0) as u32;
+
+                        view! {
+                            <div class="stream-row">
+                                <span class="stream-name">{stage.name.clone()}</span>
+                                <div class="stream-bar-container">
+                                    <div class=bar_class style:width=move || format!("{}%", activity_pct())></div>
+                                </div>
+                                <span class="stream-value">{move || format!("{:.0}%", stage.activity * 100.0)}</span>
+                            </div>
+                        }
+                    }
+                />
+            </div>
+        </div>
+    }
+}
+
+/// Entropy gauge with sparkline
+#[component]
+fn EntropyCard(extended: Signal<Option<ExtendedMetrics>>) -> impl IntoView {
+    let entropy = move || extended.get().map(|e| e.entropy).unwrap_or_default();
+    let description = move || entropy().description;
+    let current = move || entropy().current;
+    let normalized = move || entropy().normalized;
+
+    view! {
+        <div class="card entropy-card">
+            <h2>"ENTROPY"</h2>
+            <div class="entropy-value">{move || format!("{:.2} bits", current())}</div>
+            <div class="entropy-gauge">
+                <div class="entropy-fill" style:width=move || format!("{}%", (normalized() * 100.0) as u32)></div>
+            </div>
+            <div class="entropy-description">{description}</div>
+            <div class="entropy-scale">
+                <span>"CLOCKWORK"</span>
+                <span>"BALANCED"</span>
+                <span>"EMERGENT"</span>
+            </div>
+        </div>
+    }
+}
+
+/// Fractality gauge - clockwork to fractal transition
+#[component]
+fn FractalityCard(extended: Signal<Option<ExtendedMetrics>>) -> impl IntoView {
+    let fractality = move || extended.get().map(|e| e.fractality).unwrap_or_default();
+    let score = move || fractality().score;
+    let description = move || fractality().description;
+    let burst_ratio = move || fractality().burst_ratio;
+
+    view! {
+        <div class="card fractality-card">
+            <h2>"FRACTALITY"</h2>
+            <div class="fractality-score">{move || format!("{:.0}%", score() * 100.0)}</div>
+            <div class="fractality-gauge">
+                <div class="fractality-fill" style:width=move || format!("{}%", (score() * 100.0) as u32)></div>
+            </div>
+            <div class="fractality-description">{description}</div>
+            <div class="fractality-stats">
+                <span>"Burst Ratio: "{move || format!("{:.2}", burst_ratio())}</span>
+            </div>
+        </div>
+    }
+}
+
+/// Memory Windows - 9 TMI slots
+#[component]
+fn MemoryWindowsCard(extended: Signal<Option<ExtendedMetrics>>) -> impl IntoView {
+    let windows = move || extended.get().map(|e| e.memory_windows).unwrap_or_default();
+    let slots = move || windows().slots;
+    let active = move || windows().active_count;
+
+    view! {
+        <div class="card memory-windows-card">
+            <h2>"MEMORY WINDOWS"</h2>
+            <div class="windows-header">
+                <span>{move || format!("{}/9 active", active())}</span>
+            </div>
+            <div class="memory-slots">
+                <For
+                    each=move || slots()
+                    key=|s| s.id
+                    children=move |slot| {
+                        let class = move || if slot.active { "slot active" } else { "slot" };
+                        view! {
+                            <div class=class>{slot.id}</div>
+                        }
+                    }
+                />
+            </div>
+        </div>
+    }
+}
+
+/// Philosophy banner
+#[component]
+fn PhilosophyCard(extended: Signal<Option<ExtendedMetrics>>) -> impl IntoView {
+    let philosophy = move || extended.get().map(|e| e.philosophy).unwrap_or_default();
+    let quote = move || philosophy().quote;
+
+    view! {
+        <div class="card philosophy-card">
+            <div class="philosophy-quote">{quote}</div>
         </div>
     }
 }
@@ -511,6 +747,7 @@ async fn fetch_manifold() -> Result<ManifoldResponse, ()> {
 #[component]
 pub fn App() -> impl IntoView {
     let (metrics, set_metrics) = create_signal(DashboardMetrics::default());
+    let (extended, set_extended) = create_signal(None::<ExtendedMetrics>);
     let (connected, set_connected) = create_signal(false);
 
     // WebSocket connection
@@ -528,7 +765,15 @@ pub fn App() -> impl IntoView {
                     while let Some(msg) = read.next().await {
                         match msg {
                             Ok(Message::Text(text)) => {
-                                if let Ok(data) = serde_json::from_str::<DashboardMetrics>(&text) {
+                                // Try parsing as ObservatoryMetrics first (new format)
+                                if let Ok(data) = serde_json::from_str::<ObservatoryMetrics>(&text)
+                                {
+                                    set_metrics.set(data.dashboard);
+                                    set_extended.set(data.extended);
+                                } else if let Ok(data) =
+                                    serde_json::from_str::<DashboardMetrics>(&text)
+                                {
+                                    // Fallback to old format
                                     set_metrics.set(data);
                                 }
                             }
@@ -558,10 +803,13 @@ pub fn App() -> impl IntoView {
             <header class="header">
                 <div>
                     <h1>"DANEEL - The Observable Mind"</h1>
-                    <p class="subtitle">"Nursery window into Timmy's cognitive processes"</p>
+                    <p class="subtitle">"Observatory into Timmy's cognitive processes"</p>
                 </div>
                 <StatusIndicator connected=connected.into() />
             </header>
+
+            // Philosophy banner at top
+            <PhilosophyCard extended=extended.into() />
 
             <div class="grid">
                 <IdentityCard metrics=metrics.into() />
@@ -570,6 +818,19 @@ pub fn App() -> impl IntoView {
                 <EmotionalCard metrics=metrics.into() />
                 <MemoryCard metrics=metrics.into() />
                 <ActorsCard metrics=metrics.into() />
+            </div>
+
+            // Observatory section
+            <div class="observatory-section">
+                <h2 class="section-title">"COGNITIVE DYNAMICS"</h2>
+                <div class="observatory-grid">
+                    <StreamCompetitionCard extended=extended.into() />
+                    <div class="metrics-column">
+                        <EntropyCard extended=extended.into() />
+                        <FractalityCard extended=extended.into() />
+                        <MemoryWindowsCard extended=extended.into() />
+                    </div>
+                </div>
             </div>
 
             <ThoughtManifoldCard />
