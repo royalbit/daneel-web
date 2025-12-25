@@ -127,35 +127,28 @@ pub async fn fetch_manifold_points(
         .result
         .into_iter()
         .filter_map(|point| {
-            // Extract vector
+            // Extract vector using get_vector() helper (qdrant-client 1.x API)
             let vector: Vec<f32> = point
                 .vectors
                 .as_ref()
-                .and_then(|v| v.vectors_options.as_ref())
-                .and_then(|vo| match vo {
-                    qdrant_client::qdrant::vectors_output::VectorsOptions::Vector(v) => {
-                        match v.clone().into_vector() {
-                            qdrant_client::qdrant::vector_output::Vector::Dense(dense) => {
-                                Some(dense.data)
-                            }
-                            _ => None,
-                        }
-                    }
+                .and_then(|v| v.get_vector())
+                .and_then(|v| match v {
+                    qdrant_client::qdrant::vector_output::Vector::Dense(dense) => Some(dense.data),
                     _ => None,
                 })?;
 
-            // Extract salience from payload
+            // Extract salience from payload (field is "original_salience" in unconscious collection)
             let salience = point
                 .payload
-                .get("salience")
+                .get("original_salience")
                 .and_then(|v| v.as_double())
                 .map(|v| v as f32)
                 .unwrap_or(0.5);
 
-            // Extract timestamp for age calculation
+            // Extract timestamp for age calculation (field is "archived_at" in unconscious collection)
             let created_ms = point
                 .payload
-                .get("created_at")
+                .get("archived_at")
                 .and_then(|v| v.as_integer())
                 .map(|v| v as u64)
                 .unwrap_or(now_ms);
