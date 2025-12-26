@@ -47,6 +47,10 @@ dotenvy = "0.15"
 # Dimensionality reduction (768-dim -> 3D via random projection)
 ndarray = "0.17"
 
+# Embeddings for /embed endpoint (kin injection helper)
+fastembed = "4"
+once_cell = "1"
+
 [dev-dependencies]
 cargo-husky = { version = "1", default-features = false, features = ["user-hooks"] }
 tokio-test = "0.4"
