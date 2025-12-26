@@ -8,12 +8,14 @@
 mod vectors;
 
 use axum::{
+    body::Body,
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         State,
     },
-    response::{IntoResponse, Json},
-    routing::get,
+    http::{Request, StatusCode},
+    response::{IntoResponse, Json, Response},
+    routing::{get, post},
     Router,
 };
 use chrono::{DateTime, Utc};
@@ -340,6 +342,68 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
 // Static files served via ServeDir from daneel-web-ui/dist
 
 // =============================================================================
+// Injection API Proxy (STIM-D: Kin Injection)
+// =============================================================================
+
+/// Proxy POST /inject to daneel core
+async fn proxy_inject(
+    State(state): State<Arc<AppState>>,
+    request: Request<Body>,
+) -> Result<Response<Body>, StatusCode> {
+    proxy_to_core(&state, request, "/inject").await
+}
+
+/// Proxy GET /recent_injections to daneel core
+async fn proxy_recent_injections(
+    State(state): State<Arc<AppState>>,
+    request: Request<Body>,
+) -> Result<Response<Body>, StatusCode> {
+    proxy_to_core(&state, request, "/recent_injections").await
+}
+
+/// Generic proxy to daneel core
+async fn proxy_to_core(
+    state: &AppState,
+    request: Request<Body>,
+    path: &str,
+) -> Result<Response<Body>, StatusCode> {
+    let url = format!("{}{}", state.daneel_core_url, path);
+
+    // Build the proxied request
+    let method = request.method().clone();
+    let headers = request.headers().clone();
+    let body_bytes = axum::body::to_bytes(request.into_body(), 1024 * 1024)
+        .await
+        .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    let mut req_builder = state.http_client.request(method, &url);
+
+    // Forward relevant headers (Authorization, Content-Type)
+    if let Some(auth) = headers.get("authorization") {
+        req_builder = req_builder.header("authorization", auth);
+    }
+    if let Some(ct) = headers.get("content-type") {
+        req_builder = req_builder.header("content-type", ct);
+    }
+
+    let response = req_builder
+        .body(body_bytes.to_vec())
+        .send()
+        .await
+        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+
+    let status = StatusCode::from_u16(response.status().as_u16())
+        .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+    let body = response.bytes().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
+
+    Ok(Response::builder()
+        .status(status)
+        .header("content-type", "application/json")
+        .body(Body::from(body))
+        .unwrap())
+}
+
+// =============================================================================
 // Background Metrics Fetchers
 // =============================================================================
 
@@ -605,7 +669,7 @@ async fn main() {
     let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".into());
     let qdrant_url = std::env::var("QDRANT_URL").unwrap_or_else(|_| "http://localhost:6334".into());
     let daneel_core_url =
-        std::env::var("DANEEL_CORE_URL").unwrap_or_else(|_| "http://localhost:8080".into());
+        std::env::var("DANEEL_CORE_URL").unwrap_or_else(|_| "http://localhost:3030".into());
     let port: u16 = std::env::var("PORT")
         .ok()
         .and_then(|p| p.parse().ok())
@@ -629,6 +693,9 @@ async fn main() {
         .route("/observatory", get(observatory))
         .route("/vectors", get(manifold_vectors))
         .route("/ws", get(ws_handler))
+        // STIM-D: Kin Injection API proxy
+        .route("/inject", post(proxy_inject))
+        .route("/recent_injections", get(proxy_recent_injections))
         .fallback_service(ServeDir::new(&frontend_dir))
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())

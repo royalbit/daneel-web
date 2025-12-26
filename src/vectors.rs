@@ -108,10 +108,10 @@ pub async fn fetch_manifold_points(
 ) -> Result<Vec<ManifoldPoint>, Box<dyn std::error::Error + Send + Sync>> {
     let client = qdrant_client::Qdrant::from_url(qdrant_url).build()?;
 
-    // Scroll through unconscious memories (most recent first)
+    // Scroll through conscious memories (Phase 2: forward-only embeddings)
     let result = client
         .scroll(
-            ScrollPointsBuilder::new("unconscious")
+            ScrollPointsBuilder::new("memories")
                 .limit(limit)
                 .with_payload(true)
                 .with_vectors(true),
@@ -137,20 +137,21 @@ pub async fn fetch_manifold_points(
                     _ => None,
                 })?;
 
-            // Extract salience from payload (field is "original_salience" in unconscious collection)
+            // Extract salience from payload (memories collection uses semantic_salience)
             let salience = point
                 .payload
-                .get("original_salience")
+                .get("semantic_salience")
                 .and_then(|v| v.as_double())
                 .map(|v| v as f32)
                 .unwrap_or(0.5);
 
-            // Extract timestamp for age calculation (field is "archived_at" in unconscious collection)
+            // Extract timestamp for age calculation (memories uses encoded_at ISO string)
             let created_ms = point
                 .payload
-                .get("archived_at")
-                .and_then(|v| v.as_integer())
-                .map(|v| v as u64)
+                .get("encoded_at")
+                .and_then(|v| v.as_str())
+                .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+                .map(|dt| dt.timestamp_millis() as u64)
                 .unwrap_or(now_ms);
 
             let age_ms = now_ms.saturating_sub(created_ms);
