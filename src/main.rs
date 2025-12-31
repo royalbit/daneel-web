@@ -32,15 +32,15 @@ use tracing::{info, warn};
 // Embedding Engine (for /embed endpoint)
 // =============================================================================
 
-/// Vector dimension (all-MiniLM-L6-v2 produces 384, padded to 768 for Qdrant)
+/// Vector dimension (BGE-base-en-v1.5 produces native 768)
 const VECTOR_DIMENSION: usize = 768;
 
-/// Lazy-initialized embedding model
+/// Lazy-initialized embedding model (BGE-base-en-v1.5 per ADR-052)
 static EMBEDDER: Lazy<Option<TextEmbedding>> =
     Lazy::new(
-        || match TextEmbedding::try_new(InitOptions::new(EmbeddingModel::AllMiniLML6V2)) {
+        || match TextEmbedding::try_new(InitOptions::new(EmbeddingModel::BGEBaseENV15)) {
             Ok(model) => {
-                info!("Embedding engine initialized for /embed endpoint");
+                info!("Embedding engine initialized (bge-base-en-v1.5, 768 dims)");
                 Some(model)
             }
             Err(e) => {
@@ -578,7 +578,7 @@ async fn embed_handler(
         )
     })?;
 
-    // Pad to 768 dimensions if needed (all-MiniLM-L6-v2 produces 384)
+    // Ensure 768 dimensions (BGE is native 768, but keep safety check)
     if vector.len() < VECTOR_DIMENSION {
         vector.resize(VECTOR_DIMENSION, 0.0);
     }
@@ -591,7 +591,7 @@ async fn embed_handler(
 
     Ok(Json(EmbedResponse {
         vector,
-        model: "all-MiniLM-L6-v2".into(),
+        model: "bge-base-en-v1.5".into(),
         dimensions: VECTOR_DIMENSION,
     }))
 }
