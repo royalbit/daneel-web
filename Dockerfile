@@ -2,19 +2,17 @@
 # Multi-stage build: Rust backend + Leptos WASM frontend
 #
 # Build: docker build -t timmy-daneel-web .
-# Size: ~60MB (static binary + WASM bundle + fastembed model)
 
 # =============================================================================
 # Stage 1: Build WASM frontend with Trunk
 # =============================================================================
-FROM rust:1.83-alpine AS wasm-builder
+FROM rust:1.83-bookworm AS wasm-builder
 
 # Install build dependencies
-RUN apk add --no-cache \
-    musl-dev \
-    openssl-dev \
-    pkgconfig \
-    binaryen
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config \
+    binaryen \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install trunk and wasm target
 RUN cargo install trunk && \
@@ -28,7 +26,7 @@ COPY frontend/Cargo.toml frontend/Cargo.lock* ./
 # Create dummy lib for dependency caching
 RUN mkdir src && echo "pub fn main() {}" > src/lib.rs
 
-# Build frontend dependencies
+# Build frontend dependencies (ignore errors for dummy build)
 RUN trunk build --release 2>/dev/null || true
 RUN rm -rf src dist
 
@@ -42,16 +40,13 @@ RUN trunk build --release
 # =============================================================================
 # Stage 2: Build Rust backend
 # =============================================================================
-FROM rust:1.83-alpine AS backend-builder
+FROM rust:1.83-bookworm AS backend-builder
 
 # Install build dependencies
-RUN apk add --no-cache \
-    musl-dev \
-    openssl-dev \
-    openssl-libs-static \
-    pkgconfig \
-    perl \
-    make
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -62,9 +57,6 @@ COPY Cargo.toml Cargo.lock ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs
 
 # Build dependencies (this layer is cached)
-ENV OPENSSL_STATIC=1
-ENV OPENSSL_LIB_DIR=/usr/lib
-ENV OPENSSL_INCLUDE_DIR=/usr/include
 RUN cargo build --release && rm -rf src
 
 # Copy actual source
@@ -77,12 +69,16 @@ RUN touch src/main.rs && cargo build --release
 RUN strip /app/target/release/daneel-web
 
 # =============================================================================
-# Stage 3: Runtime
+# Stage 3: Runtime (minimal Debian)
 # =============================================================================
-FROM alpine:3.21
+FROM debian:bookworm-slim
 
 # Install runtime dependencies
-RUN apk add --no-cache ca-certificates curl
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libssl3 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
