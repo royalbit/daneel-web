@@ -1,7 +1,9 @@
-# Build artifacts
-target/
+# Build artifacts (keep release binary and dist for Docker)
+target/debug/
+target/.rustc_info.json
+target/.cargo-lock
+target/CACHEDIR.TAG
 frontend/target/
-frontend/dist/
 *.log
 
 # Git
