@@ -1,0 +1,34 @@
+# Build artifacts
+target/
+frontend/target/
+frontend/dist/
+*.log
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Development
+.env*
+*.local
+
+# Asimov context
+.asimov/
+
+# Cargo husky
+.cargo-husky/
