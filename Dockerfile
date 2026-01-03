@@ -6,7 +6,7 @@
 # =============================================================================
 # Stage 1: Build WASM frontend with Trunk
 # =============================================================================
-FROM rust:1.83-bookworm AS wasm-builder
+FROM rust:1.85-bookworm AS wasm-builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -40,7 +40,7 @@ RUN trunk build --release
 # =============================================================================
 # Stage 2: Build Rust backend
 # =============================================================================
-FROM rust:1.83-bookworm AS backend-builder
+FROM rust:1.85-bookworm AS backend-builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
